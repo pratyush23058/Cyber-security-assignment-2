@@ -1,0 +1,141 @@
+# ==============================================================================
+# Step 1: Install Necessary Libraries
+# ==============================================================================
+# This command installs the 'wordcloud' library required for visualization.
+!pip install wordcloud
+
+# ==============================================================================
+# Step 2: Import All Required Libraries
+# ==============================================================================
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from wordcloud import WordCloud
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# ==============================================================================
+# Step 3: Data Loading and Preparation
+# ==============================================================================
+# In a real project, you would load a larger dataset.
+data = {
+    'label': ['ham', 'ham', 'spam', 'ham', 'spam', 'spam', 'ham', 'spam'],
+    'message': [
+        'Hey, are you coming to the meeting tomorrow?',
+        'Can you please send me the final report?',
+        'Congratulations! You have won a $1000 gift card. Click here: http://bit.ly/xyz',
+        'See you tomorrow at 10 AM in the office.',
+        'URGENT: Your bank account has been compromised. Please verify your details immediately at http://fakebank.com/login',
+        'Claim your free prize now! Call 123456789 to receive your reward.',
+        'Thanks for the documents, I will review them.',
+        'Special offer just for you! Get a 50% discount on your next purchase. Act now!'
+    ]
+}
+df = pd.DataFrame(data)
+df['label_num'] = df['label'].map({'ham': 0, 'spam': 1})
+
+print("--- Data Loaded and Prepared ---")
+print(df.head())
+print("\n")
+
+# ==============================================================================
+# Step 4: Exploratory Data Analysis (Data Visualization)
+# ==============================================================================
+print("--- Visualizing Data Distribution ---")
+plt.figure(figsize=(6, 4))
+sns.countplot(x='label', data=df, palette=['#4CAF50', '#F44336'])
+plt.title('Distribution of Ham vs. Spam Messages')
+plt.xlabel('Message Type')
+plt.ylabel('Count')
+plt.show()
+print("\n")
+
+
+# ==============================================================================
+# Step 5: Feature Extraction and Model Training
+# ==============================================================================
+# Define features (X) and target (y)
+X = df['message']
+y = df['label_num']
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+
+# Initialize and fit TF-IDF Vectorizer
+tfidf_vectorizer = TfidfVectorizer(stop_words='english', lowercase=True)
+X_train_tfidf = tfidf_vectorizer.fit_transform(X_train)
+X_test_tfidf = tfidf_vectorizer.transform(X_test)
+
+# Initialize and train the Multinomial Naive Bayes model
+model = MultinomialNB()
+model.fit(X_train_tfidf, y_train)
+print("--- Model Trained Successfully ---\n")
+
+# ==============================================================================
+# Step 6: Model Evaluation with Visuals
+# ==============================================================================
+# Make predictions
+y_pred = model.predict(X_test_tfidf)
+
+# Print Accuracy and Classification Report
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Model Accuracy: {accuracy:.2f}\n")
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=['ham', 'spam']))
+
+# --- Confusion Matrix Visualization ---
+print("--- Visualizing Confusion Matrix ---")
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(6, 4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Ham', 'Spam'], yticklabels=['Ham', 'Spam'])
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.show()
+print("\n")
+
+
+# ==============================================================================
+# Step 7: Word Cloud Visualization
+# ==============================================================================
+print("--- Generating Word Clouds ---")
+
+# Word Cloud for Spam messages
+spam_messages = ' '.join(df[df['label'] == 'spam']['message'])
+spam_wordcloud = WordCloud(width=800, height=400, background_color='white').generate(spam_messages)
+
+plt.figure(figsize=(10, 5))
+plt.imshow(spam_wordcloud, interpolation='bilinear')
+plt.title('Most Common Words in Spam Messages')
+plt.axis('off')
+plt.show()
+
+# Word Cloud for Ham messages
+ham_messages = ' '.join(df[df['label'] == 'ham']['message'])
+ham_wordcloud = WordCloud(width=800, height=400, background_color='black').generate(ham_messages)
+
+plt.figure(figsize=(10, 5))
+plt.imshow(ham_wordcloud, interpolation='bilinear')
+plt.title('Most Common Words in Ham Messages')
+plt.axis('off')
+plt.show()
+print("\n")
+
+# ==============================================================================
+# Step 8: Prediction on New Messages
+# ==============================================================================
+print("\n--- Testing Model on New Messages ---")
+new_messages = [
+    "Hi mom, I will be late for dinner tonight.",
+    "Your security code is 1234. Do not share it.",
+    "You are the lucky winner of a new car! To claim, visit this link: http://win.ly/prize"
+]
+
+new_messages_tfidf = tfidf_vectorizer.transform(new_messages)
+predictions = model.predict(new_messages_tfidf)
+prediction_labels = ['ham' if p == 0 else 'spam' for p in predictions]
+
+for i, msg in enumerate(new_messages):
+    print(f"Message: '{msg}'\nPredicted: **{prediction_labels[i]}**\n")
